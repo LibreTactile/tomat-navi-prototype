@@ -10,7 +10,7 @@ Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
     - [prototype description](/docs/1%20prototype%20description.md)
         - [design document draft](/docs/2%20design%20doc.md)
     - [use guide](/docs/3%20use%20guide.md)
-    - [build guide](/docs/4%20build-guide.md)
+    - [build guide](/docs/4%20build-guide.md) (pending)
 
 - source files
     - hardware
@@ -18,6 +18,7 @@ Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
       - pico firmware
       - bill of materials (for building 5 prototypes)
     - software
+      - chrome extension
 
 
 # Intellectual Property Strategy

@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+
+  "name": "Tactile navigator",
+  "description": "Codesigned MVP chrome extension",
+  "version": "1.0",
+  "options_ui": {
+    "open_in_tab": true,
+    "page": "options/options.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["modelInteraction.js", "modeler.js"]
+    }
+  ],
+  "action": { "default_title": "Open settings" },
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "commands": {
+    "connect-shortcut": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Q"
+      },
+      "description": "Starts connection dialog."
+    }
+  },
+
+  "permissions": ["activeTab", "tts", "alarms", "tabs", "scripting", "storage"],
+  "host_permissions": ["*://*/*"]
+}
