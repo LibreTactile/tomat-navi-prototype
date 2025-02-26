@@ -9,6 +9,11 @@ date: 24 February 2025
 
 
 ## **Context**  
+
+>[Related publication](https://digitalcommons.lindenwood.edu/faculty-research-papers/714/)  
+Nino, J., Ochoa, S., Kiss, J., Edwards, G., Morales, E., Hutson, J., ... & Wittich, W. (2024). Assistive Technologies for Internet Navigation: A Review of Screen Reader Solutions for the Blind and Visually Impaired. International Journal of Recent Engineering Science, 11(6).
+
+
 The **TOMAT Navigator** is a hardware and software **assistive human-computer interface** within the **LibreTactile** ecosystem (vision: *touching ideas*), designed to empower visually impaired users to navigate the internet through **nonlinear, multimodal interaction**. Traditional screen readers present content sequentially, forcing users to reconstruct webpage structure mentally. TOMAT addresses this by generating multimodal **interactable models** of webpages, enabling users to explore relationships between elements, adjust detail granularity, and interact contextually via audio-tactile feedback and gesture-based inputs. Algorithms and AI systems generate interactive webpage models from the DOM, representing structural (hierarchical), visuospatial, and/or semantic relationships. Alternatively, models for popular pages could be shared by community of users and developers. 
 
 TOMAT Navigator transforms linear screen reader experiences into **multiscale, nonlinear navigation**. It dynamically models webpage structure as a **collapsible tree**, allowing users to "zoom in & out" between high-level overviews and granular details. Key innovations include:  
