@@ -8,7 +8,7 @@ KEEP_ALIVE_PERIOD=10
 pulse=False
 
 
-# IO SECTION written by Juan Nino - Sept 2022 Released under MIT License.
+# IO SECTION written by Juan Nino - Sept 2022
 # TOMAT NAVI V0.5.1
 # ----------START OF USB SERIAL SECTION----------------------
 # USB SERIAL SECTION Copied from raspberry pi forums: https://forums.raspberrypi.com/viewtopic.php?t=302889 July 2022
