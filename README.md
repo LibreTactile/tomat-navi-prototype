@@ -14,6 +14,9 @@ Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
 
 - source files
     - hardware
+      - 3d printer files (freeCAD 3d models) 
+      - pico firmware
+      - bill of materials (for building 5 prototypes)
     - software
 
 
