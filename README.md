@@ -1,5 +1,6 @@
+[![DOI](https://zenodo.org/badge/938456969.svg)](https://doi.org/10.5281/zenodo.14977337)
 # tomat-navi-prototype
-Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
+Prototype for Touch Matrix Assistive Technology Navigator (TOMAT) 
 
 
 # Overview
