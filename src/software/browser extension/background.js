@@ -46,7 +46,7 @@ function speakInputText(input_string, language = "en-US") {
 
 function ChangeSpeechRate(direction = "more") {
   //more, less, max, min
-  console.log("Changing speech rate, to get " + direction + " speed");
+  console.log("[bkgnd] Changing speech rate, to get " + direction + " speed");
 
   if (direction == "more") {
     if (speechRate > 0.5) {
@@ -54,7 +54,7 @@ function ChangeSpeechRate(direction = "more") {
 
       speakInputText("Speech rate set at " + speechRate * 100 + " percent.");
     } else {
-      console.log("Speech rate at minimum 50% ");
+      console.log("[bkgnd]Speech rate at minimum 50% ");
       speakInputText("Speech rate at minimum 50%");
     }
   } else {
@@ -62,7 +62,7 @@ function ChangeSpeechRate(direction = "more") {
       speechRate += 0.25;
       speakInputText("Speech rate set at " + speechRate * 100 + " percent.");
     } else {
-      console.log("Speech rate at maximum 250% ");
+      console.log("[bkgnd] Speech rate at maximum 250% ");
       speakInputText("Speech rate at maximum 250%");
     }
   }
@@ -90,7 +90,7 @@ chrome.tabs.onActivated.addListener(function (activeTabInfo) {
       // );
     } else {
       console.log(
-        "tab not loaded yet, dont send command, it will autoload on start if focused"
+        "[bkgnd] tab not loaded yet, dont send command, it will autoload on start if focused"
       );
     }
   });
@@ -166,8 +166,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
       default:
         // helps debug when request
-        console.log("Unmatched request from script to background.js");
-        console.log(request);
+        console.log("[bkgnd] Unmatched request from script to background.js ", request);
         return;
     }
   }

@@ -72,18 +72,18 @@ function toggleWebSocketSettings(protocol) {
 }
 
 async function request_connection(e) {
-  //TODO: catch connection erros
-  await connect();
+  const selectedProtocol = document.getElementById("protocol").value;
+  chrome.storage.sync.set({ protocol: selectedProtocol }, async () => {
+    protocol = selectedProtocol; // Update protocol in com.js
+    await connect();
 
-  //get the options page tabId
-  chrome.tabs.query({ currentWindow: true, active: true }, function (tabs) {
-    chrome.runtime.sendMessage({
-      request: "return to tab",
-      optionsTabId: tabs[0].id,
+    chrome.tabs.query({ currentWindow: true, active: true }, function (tabs) {
+      chrome.runtime.sendMessage({
+        request: "return to tab",
+        optionsTabId: tabs[0].id,
+      });
     });
   });
-  //TODO: could something like this work ?
-  //const tab = await chrome.tabs.get(tabId);
 }
 
 // EVENT LISTENERS
@@ -107,7 +107,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     switch (message.command) {
       case "update settings":
         console.log(
-          "Settings updated, triggered by: ",
+          "[options] Settings updated, triggered by: ",
           message.trigger,
           message
         );
@@ -128,22 +128,26 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         break;
       case "send to device":
         if (connected) {
-          if (debugCOM) console.log("COMM: sending " + message.data);
+          if (debugCOM) console.log("[options] sending " + message.data);
           writeToStream(message.data);
         } else {
           if (debugCOM)
             console.log(
-              "COMM: got asked to send this without connection: " + message.data
+              "[options] got asked to send this without connection: " + message.data
             );
         }
         break;
       case "start navigation":
-        console.log("wont start navigation on options page for MVP");
+        console.log("[options] wont start navigation on options page for MVP, try a different tab");
+        break;
+      case "received from device":
+        console.log("[options] Data received from device:", message.data);
+        // Add any additional handling logic here if needed
         break;
       default:
         // debugging commands
         console.warn(
-          "Unmatched command of '",
+          "[options] Unmatched command of '",
           message,
           "' from background.js options scripts from ",
           sender

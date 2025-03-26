@@ -14,6 +14,8 @@ var inputStream;
 var outputStream;
 var connected = false;
 var rxbuffer = "";
+var protocol = "serial"; // Default protocol
+var wsSocket; // WebSocket instance
 
 //Check if serial is supported
 if ("serial" in navigator) {
@@ -24,66 +26,70 @@ if ("serial" in navigator) {
 }
 
 async function connect() {
-  // CODELAB: Add code to request & open port here.
-  // - Request a port and open a connection.
-  port = await navigator.serial.requestPort();
-  // - Wait for the port to open.
-  await port.open({ baudRate: 115200 });
-  // CODELAB: Add code setup the output stream here.
-  const encoder = new TextEncoderStream();
-  outputDone = encoder.readable.pipeTo(port.writable);
-  outputStream = encoder.writable;
-  // CODELAB: Send CTRL-C and turn off echo on REPL
+  if (protocol === "serial") {
+    // WebUSB Serial connection
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
 
-  // CODELAB: Add code to read the stream here.
-  let decoder = new TextDecoderStream();
-  inputDone = port.readable.pipeTo(decoder.writable);
-  inputStream = decoder.readable;
+    const encoder = new TextEncoderStream();
+    outputDone = encoder.readable.pipeTo(port.writable);
+    outputStream = encoder.writable;
 
-  reader = inputStream.getReader();
-  readLoop();
-  connected = true;
+    const decoder = new TextDecoderStream();
+    inputDone = port.readable.pipeTo(decoder.writable);
+    inputStream = decoder.readable;
 
-  writeToStream("0*");
-  if (debugCOM) console.log("COMM: connection process ok!");
-}
+    reader = inputStream.getReader();
+    readLoop();
+    connected = true;
 
-if (debugCOM) console.log("." + "\n COM: Revision no. 03 \n ".trim() + ".");
+    writeToStream("0*");
+    if (debugCOM) console.log("COMM: Serial connection established!");
+  } else if (protocol === "websocket") {
+    // WebSocket connection
+    const wsIp = await getStoredSetting("wsIp", "192.168.12.3");
+    const wsPort = await getStoredSetting("wsPort", "8765");
+    wsSocket = new WebSocket(`ws://${wsIp}:${wsPort}`);
 
-async function connect() {
-  // CODELAB: Add code to request & open port here.
-  // - Request a port and open a connection.
-  port = await navigator.serial.requestPort();
-  // - Wait for the port to open.
-  await port.open({ baudRate: 115200 });
-  // CODELAB: Add code setup the output stream here.
-  const encoder = new TextEncoderStream();
-  outputDone = encoder.readable.pipeTo(port.writable);
-  outputStream = encoder.writable;
-  // CODELAB: Send CTRL-C and turn off echo on REPL
+    wsSocket.onopen = () => {
+      connected = true;
+      if (debugCOM) console.log("COMM: WebSocket connection established!");
+    };
 
-  // CODELAB: Add code to read the stream here.
-  let decoder = new TextDecoderStream();
-  inputDone = port.readable.pipeTo(decoder.writable);
-  inputStream = decoder.readable;
+    wsSocket.onmessage = (event) => {
+      const message = event.data;
+      if (debugCOM) console.log("COMM: Received via WebSocket:", message);
+      chrome.runtime.sendMessage({
+        request: "received from device",
+        data: message,
+      });
+    };
 
-  reader = inputStream.getReader();
-  readLoop();
-  connected = true;
-  if (debugCOM) console.log("COMM: connection process ok!");
-  chrome.runtime.sendMessage({
-    request: "tts",
-    data: "Connected!",
-    lang: "en-US",
-  }); //en-US or fr-FR, rate: 2.0
+    wsSocket.onerror = (error) => {
+      console.error("COMM: WebSocket error:", error);
+    };
+
+    wsSocket.onclose = () => {
+      connected = false;
+      if (debugCOM) console.log("COMM: WebSocket connection closed.");
+    };
+  }
 }
 
 async function disconnect() {
-  // CODELAB: Close the input stream (reader).
-  // CODELAB: Close the output stream.
-  // CODELAB: Close the port.
-
-  writeToStream("0*");
+  if (protocol === "serial") {
+    writeToStream("0*");
+    reader.cancel();
+    await inputDone.catch(() => {});
+    await outputDone.catch(() => {});
+    await port.close();
+    connected = false;
+    if (debugCOM) console.log("COMM: Serial connection closed.");
+  } else if (protocol === "websocket" && wsSocket) {
+    wsSocket.close();
+    connected = false;
+    if (debugCOM) console.log("COMM: WebSocket connection closed.");
+  }
 }
 
 async function readLoop() {
@@ -128,15 +134,66 @@ async function readLoop() {
 }
 
 function writeToStream(outText) {
-  // CODELAB: Write to output stream
-
   if (!connected) return;
 
-  const writer = outputStream.getWriter();
-  if (debugCOM) console.log("COMM: [SEND]", outText);
-  writer.write(outText + "\n");
+  if (protocol === "serial") {
+    const writer = outputStream.getWriter();
+    if (debugCOM) console.log("COMM: [SEND via Serial]", outText);
+    writer.write(outText + "\n");
+    writer.releaseLock();
+  } else if (protocol === "websocket" && wsSocket) {
+    // Parse serial string to JSON format
+    const jsonData = parseSerialToJson(outText);
+    if (debugCOM) console.log("COMM: [SEND via WebSocket]", jsonData);
+    wsSocket.send(JSON.stringify(jsonData));
+  }
+}
 
-  writer.releaseLock();
+function parseSerialToJson(serialString) {
+  // Remove termination character and split by commas
+  const cleanString = serialString.replace(/\*$/, '');
+  const parts = cleanString.split(',');
+  
+  const jsonData = {
+    rows: []
+  };
+
+  // Process each row value
+  parts.forEach((value, rowIndex) => {
+    const rowData = {
+      row: rowIndex,
+      buttons: []
+    };
+
+    // Check for Pulsating state (ends with 'P')
+    if (value.endsWith('P')) {
+      const buttonId = parseInt(value.replace('P', ''), 10);
+      rowData.buttons.push({
+        id: buttonId-1,
+        state: "PULSATING"
+      });
+    } 
+    // Regular Active state
+    else if (value) {
+      const buttonId = parseInt(value, 10);
+      rowData.buttons.push({
+        id: buttonId-1,
+        state: "ACTIVE"
+      });
+    }
+
+    jsonData.rows.push(rowData);
+  });
+
+  return jsonData;
+}
+
+async function getStoredSetting(key, defaultValue) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ [key]: defaultValue }, (items) => {
+      resolve(items[key]);
+    });
+  });
 }
 
 //https://web.dev/serial/
