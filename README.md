@@ -44,7 +44,7 @@ Our team remains commited to our mission to advance assistive technology through
   - Forking for proprietary development  
   - Patent filings derived from this work  
 
-**Full License Text:** [LICENSE.txt](/LICENSE.txt)
+**Full License Text:** [LICENSE](/LICENSE)
 
 > External contributions will require CLA to facilitate relicensing. 
 
