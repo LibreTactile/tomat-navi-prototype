@@ -10,12 +10,18 @@ function save_options() {
   // get new values
   var verb = document.getElementById("verbosity").value;
   var lang = document.getElementById("language").value;
+  var protocol = document.getElementById("protocol").value;
+  var wsIp = document.getElementById("ws-ip").value;
+  var wsPort = document.getElementById("ws-port").value;
 
   // store new values
   chrome.storage.sync.set(
     {
       verbosity: verb,
       language: lang,
+      protocol: protocol,
+      wsIp: wsIp,
+      wsPort: wsPort,
     },
     function () {
       chrome.runtime.sendMessage({
@@ -35,18 +41,34 @@ function save_options() {
 
 // restore settings
 function restore_options() {
-  // Use default value verbosity = 'medium' and language = 'en'.
+  // Use default value verbosity = 'medium', language = 'en', protocol = 'websocket', wsIp = '192.168.12.3', wsPort = '8765'.
 
   chrome.storage.sync.get(
     {
       verbosity: "medium",
       language: "en",
+      protocol: "websocket",
+      wsIp: "192.168.12.3",
+      wsPort: "8765",
     },
     function (items) {
       document.getElementById("verbosity").value = items.verbosity;
       document.getElementById("language").value = items.language;
+      document.getElementById("protocol").value = items.protocol;
+      document.getElementById("ws-ip").value = items.wsIp;
+      document.getElementById("ws-port").value = items.wsPort;
+      toggleWebSocketSettings(items.protocol);
     }
   );
+}
+
+function toggleWebSocketSettings(protocol) {
+  var wsSettings = document.getElementById("websocket-settings");
+  if (protocol === "websocket") {
+    wsSettings.style.display = "block";
+  } else {
+    wsSettings.style.display = "none";
+  }
 }
 
 async function request_connection(e) {
@@ -74,6 +96,10 @@ document.getElementById("save").addEventListener("click", save_options);
 document
   .getElementById("connect")
   .addEventListener("click", request_connection);
+// when protocol changes, toggle WebSocket settings visibility
+document.getElementById("protocol").addEventListener("change", function() {
+  toggleWebSocketSettings(this.value);
+});
 
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   //console.log("Received this message ", message);

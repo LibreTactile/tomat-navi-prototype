@@ -18,6 +18,20 @@
       <option value="fr">French</option>
     </select>
 
+    <h1>Communication Protocol</h1>
+    <select id="protocol">
+      <option value="websocket">WebSocket</option>
+      <option value="webusb">WebUSB</option>
+    </select>
+
+    <div id="websocket-settings" style="display: none;">
+      <h2>WebSocket Settings</h2>
+      <label for="ws-ip">Server IP:</label>
+      <input type="text" id="ws-ip" value="192.168.12.3">
+      <label for="ws-port">Port Number:</label>
+      <input type="text" id="ws-port" value="8765">
+    </div>
+
     <div id="status"></div>
     <button id="save">Save</button>
     <script src="com.js"></script>
