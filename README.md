@@ -14,7 +14,7 @@ Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
     - [build guide](/docs/4%20build-guide.md) (pending)
 
 - source files
-    - hardware
+    - hardware (alternative use the tomat-[light-launcher](https://github.com/LibreTactile/light-launcher))
       - 3d printer files (freeCAD 3d models) 
       - pico firmware
       - bill of materials (for building 5 prototypes)
