@@ -96,10 +96,10 @@ async function readLoop() {
       if (debugCOM) {
         console.log(
           "COMM: Read this from port: '" +
-            value +
-            "' with this on buffer: '" +
-            rxbuffer +
-            "' "
+          value +
+          "' with this on buffer: '" +
+          rxbuffer +
+          "' "
         );
       }
       rxbuffer += value;
@@ -111,6 +111,8 @@ async function readLoop() {
           request: "received from device",
           data: rxbuffer,
         }); // send only value before "*"
+
+
         if (debugCOM) {
           console.log(
             "COMM received the following message: '" + rxbuffer + "'"

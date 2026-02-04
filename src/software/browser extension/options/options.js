@@ -109,8 +109,10 @@ document
 
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   //console.log("Received this message ", message);
-  if (message.command) {
-    switch (message.command) {
+  const cmd = message.command || message.request;
+
+  if (cmd) {
+    switch (cmd) {
       case "update settings":
         console.log(
           "Settings updated, triggered by: ",
@@ -133,7 +135,13 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         console.log("");
         break;
       case "send to device":
-        if (connected) {
+        // Check WebRTC first (if connected/open)
+        if (dataChannel && dataChannel.readyState === 'open') {
+          dataChannel.send(message.data);
+          addToLog(message.data, 'sent');
+        }
+        // Fallback/Exclusive check for WebUSB
+        else if (typeof connected !== 'undefined' && connected) {
           if (debugCOM) console.log("COMM: sending " + message.data);
           writeToStream(message.data);
         } else {
@@ -142,6 +150,11 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
               "COMM: got asked to send this without connection: " + message.data
             );
         }
+        break;
+      case "received from device":
+        // Exclusive: Only allow from hardware if WebRTC is not dominant or active mode is WebUSB.
+        // Assuming background or com.js handles dispatching to tabs.
+        // We do noting here for now as bridging is disabled.
         break;
       case "start navigation":
         console.log("wont start navigation on options page for MVP");
@@ -164,7 +177,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       default:
         // debugging commands
         console.warn(
-          "Unmatched command of '",
+          "Unmatched command/request of '",
           message,
           "' from background.js options scripts from ",
           sender
@@ -206,6 +219,9 @@ if (messageInput) {
     }
   });
 }
+
+// Listen for local hardware events from com.js
+
 
 // WebRTC Functions
 function updateUIState(isConnected) {
@@ -291,7 +307,24 @@ async function connectToPeer(peerId) {
     };
 
     dataChannel.onmessage = (event) => {
-      addToLog(event.data, 'received');
+      let msg = event.data;
+      // Attempt to clean quotes if sent as JSON string or raw quoted string
+      if (typeof msg === 'string' && msg.startsWith('"') && msg.endsWith('"')) {
+        try {
+          msg = JSON.parse(msg);
+        } catch (e) {
+          msg = msg.slice(1, -1);
+        }
+      }
+
+      addToLog(msg, 'received');
+
+      // Inject into extension system so background/tabs can react
+      // This mimics what com.js does for WebUSB
+      chrome.runtime.sendMessage({
+        request: "received from device",
+        data: msg
+      });
     };
 
     dataChannel.onclose = () => {
