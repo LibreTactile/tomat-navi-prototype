@@ -1,3 +1,10 @@
+importScripts(
+  'lib/firebase/firebase-app-compat.js',
+  'lib/firebase/firebase-firestore-compat.js',
+  'lib/signaling-manager.js',
+  'lib/utils.js'
+);
+
 // It runs in the background and is always listening for events that happen anywhere in the browser
 // 1. TTS (speaks out the message)
 // 2. active tab detection
@@ -112,6 +119,15 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         });
         break;
       case "update settings":
+        // Check protocol change
+        chrome.storage.sync.get({ protocol: 'webusb' }, (items) => {
+          if (items.protocol === 'webRTC') {
+            if (typeof initialize === 'function') initialize();
+          } else {
+            if (typeof cleanupExtension === 'function') cleanupExtension();
+          }
+        });
+
         //propagate message
         //send command to all tabs to update their settings
 
@@ -131,8 +147,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       case "return to tab":
         // bring focus to the previous tab, before opening the options page
         optionsTabId = request.optionsTabId;
-        chrome.tabs.update(previousTabId, { active: true }, (tab) => {});
-        chrome.tabs.update(optionsTabId, { pinned: true }, (tab) => {});
+        chrome.tabs.update(previousTabId, { active: true }, (tab) => { });
+        chrome.tabs.update(optionsTabId, { pinned: true }, (tab) => { });
         return;
 
       case "received from device":
@@ -189,3 +205,163 @@ chrome.commands.onCommand.addListener((command) => {
 chrome.action.onClicked.addListener((tab) => {
   chrome.runtime.openOptionsPage();
 });
+
+// WebRTC Implementation
+let signalingManager;
+let publicIP = '';
+let isInitialized = false;
+
+// Initialize signaling
+chrome.runtime.onInstalled.addListener(initialize);
+chrome.runtime.onStartup.addListener(initialize);
+
+async function initialize() {
+  const items = await chrome.storage.sync.get({ protocol: 'webusb' });
+  if (items.protocol !== 'webRTC') {
+    console.log('Background: WebRTC not selected, skipping init');
+    return;
+  }
+
+  if (isInitialized) return;
+
+  try {
+    await waitForFirebase();
+    publicIP = await Utils.getPublicIP();
+
+    signalingManager = new SignalingManager(publicIP, 'navigator');
+
+    // Set up signaling callbacks
+    signalingManager.onAnswerReceived = (answer) => {
+      // Forward answer to sidebar if needed
+      chrome.runtime.sendMessage({
+        type: 'answerReceived',
+        answer
+      }).catch(() => {
+        // Sidebar might not be open, that's ok
+      });
+    };
+
+    signalingManager.onIceCandidateReceived = (candidate) => {
+      // Forward ICE candidate to sidebar if needed
+      chrome.runtime.sendMessage({
+        type: 'iceCandidateReceived',
+        candidate
+      }).catch(() => {
+        // Sidebar might not be open, that's ok
+      });
+    };
+
+    await signalingManager.init();
+    await signalingManager.registerPeer();
+
+    isInitialized = true;
+    console.log('Background script initialized successfully');
+  } catch (error) {
+    console.error('Initialization failed:', error);
+    isInitialized = false;
+    // Retry initialization after delay
+    setTimeout(initialize, 5000);
+  }
+}
+
+// Handle messages from sidebar
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type) {
+    handleMessage(request, sender, sendResponse);
+    return true; // Required for async sendResponse
+  }
+  return false;
+});
+
+async function handleMessage(request, sender, sendResponse) {
+  if (!request.type) return;
+
+  try {
+    if (!signalingManager) {
+      // If we are here, signaling manager is not initialized
+      // Could be because protocol is not set to webRTC
+      sendResponse({ error: 'Signaling manager not initialized' });
+      return;
+    }
+
+    switch (request.type) {
+      case 'getPeers':
+        const peers = await signalingManager.findAvailablePeers();
+        sendResponse(peers);
+        break;
+
+      case 'sendOffer':
+        const sessionId = await signalingManager.sendOffer(request.offer, request.peerId);
+        sendResponse({ sessionId });
+        break;
+
+      case 'sendAnswer':
+        await signalingManager.sendAnswer(request.answer, request.sessionId);
+        sendResponse({ success: true });
+        break;
+
+      case 'sendIceCandidate':
+        await signalingManager.sendIceCandidate(request.candidate, request.sessionId);
+        sendResponse({ success: true });
+        break;
+
+      case 'cleanupSession':
+        if (signalingManager) {
+          signalingManager.cleanupSession(request.sessionId);
+          sendResponse({ success: true });
+        }
+        break;
+
+      default:
+        sendResponse({ error: 'Unknown message type' });
+    }
+  } catch (error) {
+    console.error('Error handling message:', error);
+    sendResponse({ error: error.message });
+  }
+}
+
+// Cleanup on extension shutdown
+chrome.runtime.onSuspend.addListener(() => {
+  cleanupExtension();
+});
+
+// Also handle browser window/tab closing
+chrome.windows.onRemoved.addListener(() => {
+  cleanupExtension();
+});
+
+async function cleanupExtension() {
+  if (signalingManager) {
+    try {
+      await signalingManager.cleanup();
+    } catch (error) {
+      console.error('Cleanup error:', error);
+    }
+    signalingManager = null;
+  }
+  isInitialized = false;
+}
+
+// Helper to ensure Firebase is loaded
+function waitForFirebase() {
+  return new Promise((resolve, reject) => {
+    if (typeof firebase !== 'undefined') {
+      return resolve();
+    }
+
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max wait
+
+    const checkInterval = setInterval(() => {
+      attempts++;
+      if (typeof firebase !== 'undefined') {
+        clearInterval(checkInterval);
+        resolve();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(checkInterval);
+        reject(new Error('Firebase failed to load within timeout'));
+      }
+    }, 100);
+  });
+}

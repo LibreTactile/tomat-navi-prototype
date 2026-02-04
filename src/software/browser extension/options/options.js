@@ -5,17 +5,40 @@
 //-> https://developer.chrome.com/docs/extensions/mv3/options/
 //use com.js : connect(), writeToStream(outputData)
 
+let webrtcManager;
+let currentSessionId;
+let dataChannel;
+let currentTargetPeerId;
+
+// UI Elements
+let messageInput = document.getElementById('message-input');
+let sendBtn = document.getElementById('send-btn');
+let logArea = document.getElementById('log');
+let statusEl = document.getElementById('status');
+
+function reconnect() {
+  if (webrtcManager) {
+    webrtcManager.close();
+    webrtcManager = null;
+  }
+  // Simple reload to reset state for now, but logged
+  console.log('Triggering reload for reconnection...');
+  window.location.reload();
+}
+
 // SAVE & propagate SETTINGS
 function save_options() {
   // get new values
   var verb = document.getElementById("verbosity").value;
   var lang = document.getElementById("language").value;
+  var protocol = document.getElementById("protocol").value;
 
   // store new values
   chrome.storage.sync.set(
     {
       verbosity: verb,
       language: lang,
+      protocol: protocol,
     },
     function () {
       chrome.runtime.sendMessage({
@@ -41,17 +64,26 @@ function restore_options() {
     {
       verbosity: "medium",
       language: "en",
+      protocol: "webusb",
     },
     function (items) {
       document.getElementById("verbosity").value = items.verbosity;
       document.getElementById("language").value = items.language;
+      document.getElementById("protocol").value = items.protocol;
+
+      if (items.protocol === 'webRTC') {
+        initializeWebRTC();
+      }
     }
   );
 }
 
 async function request_connection(e) {
   //TODO: catch connection erros
-  await connect();
+  var protocol = document.getElementById("protocol").value;
+  if (protocol === 'webusb') {
+    await connect();
+  }
 
   //get the options page tabId
   chrome.tabs.query({ currentWindow: true, active: true }, function (tabs) {
@@ -114,6 +146,21 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       case "start navigation":
         console.log("wont start navigation on options page for MVP");
         break;
+
+      // WebRTC Messages
+      case 'answerReceived':
+        if (webrtcManager && message.answer) {
+          webrtcManager.handleAnswer(message.answer).then(() => {
+            if (statusEl) statusEl.textContent = 'Negotiating connection...';
+          }).catch(console.error);
+        }
+        break;
+      case 'iceCandidateReceived':
+        if (webrtcManager && message.candidate) {
+          webrtcManager.handleIceCandidate(message.candidate).catch(console.error);
+        }
+        break;
+
       default:
         // debugging commands
         console.warn(
@@ -124,5 +171,164 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         );
         return;
     }
+  } else {
+    // Handle messages that don't have 'command' but have 'type' (from background for WebRTC)
+    if (message.type === 'answerReceived') {
+      if (webrtcManager && message.answer) {
+        webrtcManager.handleAnswer(message.answer).then(() => {
+          if (statusEl) statusEl.textContent = 'Negotiating connection...';
+        }).catch(console.error);
+      }
+    } else if (message.type === 'iceCandidateReceived') {
+      if (webrtcManager && message.candidate) {
+        webrtcManager.handleIceCandidate(message.candidate).catch(console.error);
+      }
+    }
+  }
+});
+
+// UI Event Listeners for WebRTC
+if (sendBtn) {
+  sendBtn.addEventListener('click', () => {
+    const msg = messageInput?.value?.trim();
+    if (msg && dataChannel && dataChannel.readyState === 'open') {
+      dataChannel.send(msg);
+      addToLog(msg, 'sent');
+      if (messageInput) messageInput.value = '';
+    }
+  });
+}
+
+if (messageInput) {
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && sendBtn) {
+      sendBtn.click();
+    }
+  });
+}
+
+// WebRTC Functions
+function updateUIState(isConnected) {
+  if (!messageInput || !sendBtn) return;
+  messageInput.disabled = !isConnected;
+  sendBtn.disabled = !isConnected;
+  if (isConnected) {
+    messageInput.focus();
+  }
+}
+
+function addToLog(message, type = 'received') {
+  if (!logArea) return;
+  const time = new Date().toLocaleTimeString();
+  const entry = `[${time}] ${type === 'sent' ? 'OUT: ' : 'IN:  '} ${message}\n`;
+  logArea.textContent += entry;
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+async function initializeWebRTC() {
+  if (webrtcManager) {
+    webrtcManager.close();
+  }
+
+  try {
+    if (statusEl) statusEl.textContent = 'Initializing WebRTC...';
+
+    // Wait a bit for background to init if needed
+    await new Promise(r => setTimeout(r, 1000));
+
+    const response = await chrome.runtime.sendMessage({ type: 'getPeers' });
+    const peers = response || [];
+
+    if (peers.length > 0) {
+      peers.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+      const bestPeer = peers[0];
+      currentTargetPeerId = bestPeer.peerId;
+      await connectToPeer(bestPeer.peerId);
+    } else {
+      if (statusEl) statusEl.textContent = 'No peers found. Retrying in 3s...';
+      updateUIState(false);
+      setTimeout(reconnect, 3000);
+    }
+  } catch (error) {
+    console.error('Failed to init WebRTC:', error);
+    if (statusEl) statusEl.textContent = 'Connection failed. Retrying...';
+    setTimeout(reconnect, 5000);
+  }
+}
+
+async function connectToPeer(peerId) {
+  try {
+    if (statusEl) statusEl.textContent = `Connecting to ${peerId}...`;
+
+    webrtcManager = new WebRTCManager({
+      signalingDelegate: {
+        sendIceCandidate: async (candidate) => {
+          if (currentSessionId) {
+            await chrome.runtime.sendMessage({
+              type: 'sendIceCandidate',
+              candidate,
+              sessionId: currentSessionId
+            });
+          }
+        }
+      },
+      onConnectionStateChange: (state) => {
+        if (statusEl) statusEl.textContent = `Connection state: ${state}`;
+        if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+          updateUIState(false);
+          if (statusEl) statusEl.textContent = 'Connection lost. Reconnecting...';
+          setTimeout(reconnect, 3000);
+        }
+      }
+    });
+
+    webrtcManager.initializePeerConnection();
+    dataChannel = webrtcManager.createDataChannel('vibration-control');
+
+    dataChannel.onopen = () => {
+      if (statusEl) statusEl.textContent = `Connected to ${peerId}`;
+      updateUIState(true);
+    };
+
+    dataChannel.onmessage = (event) => {
+      addToLog(event.data, 'received');
+    };
+
+    dataChannel.onclose = () => {
+      if (statusEl) statusEl.textContent = 'Data channel closed';
+      updateUIState(false);
+      setTimeout(reconnect, 3000);
+    };
+
+    const offer = await webrtcManager.createOffer();
+    const response = await chrome.runtime.sendMessage({
+      type: 'sendOffer',
+      offer,
+      peerId
+    });
+
+    if (response && response.sessionId) {
+      currentSessionId = response.sessionId;
+    } else {
+      throw new Error('No session ID received');
+    }
+
+  } catch (error) {
+    console.error('Connection failed:', error);
+    if (statusEl) statusEl.textContent = 'Connection error. Retrying...';
+    setTimeout(reconnect, 5000);
+  }
+}
+
+// Handle closing
+window.addEventListener('unload', () => {
+  if (webrtcManager) {
+    webrtcManager.close();
+  }
+  if (currentSessionId) {
+    chrome.runtime.sendMessage({
+      type: 'cleanupSession',
+      sessionId: currentSessionId
+    }).catch(() => { });
   }
 });
