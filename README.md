@@ -4,7 +4,13 @@ Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
 
 
 # Overview
-“Touch Matrix Assistive Technology Navigator” (tomat navigator) is an affordable, open-source assistive technology that uses AI and tactile technologies to make it easier and more natural for visually impaired users to navigate the internet. It works as a companion device for screen readers, providing an interactive non-visual representation of a webpage through audio-tactile feedback. It was codesigned with and for visually impaired screen reader users. 
+“Touch Matrix Assistive Technology Navigator” (tomat navigator) is an affordable, open-source assistive technology that uses AI and tactile technologies to make it easier and more natural for visually impaired users to navigate the internet. It works as a companion device for screen readers, providing an interactive non-visual representation of a webpage through audio-tactile feedback. It works as a companion device for screen readers, providing an interactive non-visual representation of a webpage through audio-tactile feedback. It was codesigned with and for visually impaired screen reader users. 
+
+## TOMAT Light (Smartphone Version)
+A software-only alternative called **TOMAT Light** is available as a Progressive Web App (PWA). It uses a smartphone's touchscreen and vibration motor to simulate the hardware interface.
+- **Repository**: [tomat-light-pwa](https://github.com/LibreTactile/tomat-light-pwa)
+- **Design**: Leveraging WebRTC for peer-to-peer connection with the browser extension.
+ 
 
 # Repo structure
 - docs
@@ -20,6 +26,9 @@ Prototype for Touch Matrix Assistive Technology Navigator (TOMAT)
       - bill of materials (for building 5 prototypes)
     - software
       - chrome extension
+    - external repositories
+      - [tomat-light-pwa](https://github.com/LibreTactile/tomat-light-pwa) (TOMAT Light Smartphone Interface)
+
 
 
 # Intellectual Property Strategy

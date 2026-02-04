@@ -1,6 +1,7 @@
 # 1 Setup
 
-- Plug-in usb cable to computer and tomat navi device. No driver needs to be installed.   
+- **Hardware Setup**: Plug-in usb cable to computer and tomat navi device. No driver needs to be installed.
+- **TOMAT Light (Smartphone) Setup**: Open the TOMAT Light PWA on your smartphone. (URL: https://libretactile.github.io/tomat-light-pwa/)
 - Install chrome extension  
   - Unzip `tomat navi 1.0 browser extension.zip`.  
   - Go to `` chrome://extensions/` `` on google chrome and enable the `developer mode` toggle on the top right  ![Load unpacked button](/docs/img/image.png)
@@ -10,7 +11,9 @@
 # 2 Start 
 
 - Run the extension by clicking on the extension icon, or using the keyboard shortcut `ctrl + shift + q` .   
-- Click connect to show available devices, and choose the `board CDC` device. ![Connect to device](/docs/img/image-2.png)  
+- Click connect to show available devices.
+  - **For Hardware**: Choose the `board CDC` device. ![Connect to device](/docs/img/image-2.png)
+  - **For TOMAT Light**: Choose `WebRTC` as the connection type. Ensure both your computer and smartphone are on the same network (public IP) for easy discovery.
 - (optional) change extension verbosity level and language, then hit on `save` to store your settings across sessions. 
 
 # 3 Usage example

@@ -12,6 +12,13 @@ The hardware module provides tactile and auditory feedback, allowing users to in
 * Powered by Raspberry Pi Pico: Drives vibration motors and communicates with the software via WebSerial USB, with potential for wireless protocols in the future.
 * Customizable 3D-Printed Enclosure: Affordable and easy to modify.
 
+**TOMAT Light (Smartphone Alternative)**
+[TOMAT Light](https://github.com/LibreTactile/tomat-light-pwa) is a smartphone-based alternative to the physical hardware. It is a Progressive Web App (PWA) that turns a smartphone screen into a tactile interface, replicating the core functionality of the physical device.
+* **Instant Access**: No hardware assembly required; runs in a web browser.
+* **Haptic Feedback**: Uses the smartphone's vibration motor to simulate tactile feedback (pulses and patterns).
+* **Touch Interface**: Simulates the 4x4 grid and button layout on the touchscreen.
+* **Connectivity**: Connects to the browser extension via WebRTC Peer-to-Peer.
+
 **Software Module**  
 The software module powers the hardware interface, managing webpage content extraction, navigation, and tactile feedback. Key features include:
 

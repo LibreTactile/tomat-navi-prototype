@@ -131,3 +131,40 @@ The TOMAT hardware module is a portable, 3D-printed tactile interface featuring:
 - **Plugin Marketplace**: Download community plugins, AI models, and hardware blueprints.  
 
 > Note: not all features will be implemented on the first prototype, and other hardware implementations will be released as derivative in the future. 
+
+---
+
+# TOMAT Light Design Document
+
+## 1. Introduction
+TOMAT Light is a smartphone alternative to the TOMAT hardware device (a "remote control" for the internet). It replicates TOMAT's core functionality while eliminating hardware barriers (cost, distribution, maintenance) by leveraging smartphones and web technologies.
+
+**Key Advantage:**
+Instant distribution via Progressive Web App (PWA), no app stores required.
+
+## 2. User Needs
+**Core Requirements:**
+* Real-time pairing with the TOMAT Navigator Chrome extension.
+* Screen-based simulation of TOMAT's interface:
+    * **Output:** Haptic feedback (vibration matrix).
+    * **Input:** Touchscreen buttons.
+* Tactile feedback emulating physical components:
+    * **Haptic pulse:** Short 50ms pulse on every button press.
+    * **Haptic states:**
+        * `INACTIVE`: Gray appearance, no feedback.
+        * `ACTIVE`: Green appearance, continuous vibration.
+        * `PULSATING`: Red appearance, rhythmic pulses.
+* Screen-reader compatibility for accessibility.
+
+## 3. System Overview
+**Architecture:**
+The system follows a peer-to-peer architecture where:
+* **PWA** acts as the "Interface" role
+* **Chrome Extension** acts as the "Navigator" role
+* **Firebase Firestore** serves strictly as a signaling broker (not a data relay)
+Once the WebRTC connection is established, all communication flows directly between peers without server intermediation.
+
+**Components:**
+1. TOMAT Light PWA (smartphone app)
+2. TOMAT Navigator Chrome extension
+3. Firebase Firestore signaling infrastructure
